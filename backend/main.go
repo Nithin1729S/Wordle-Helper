@@ -1,20 +1,20 @@
-package backend
+package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
-	"encoding/json"
 )
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 type RequestData struct {
-	S                      string   `json:"s"`
-	IsPresentSomewhere     []string `json:"isPresentSomewhere"`
-	IsNotPresentSomewhere  []string `json:"isNotPresentSomewhere"`
+	S                     string   `json:"s"`
+	IsPresentSomewhere    []string `json:"isPresentSomewhere"`
+	IsNotPresentSomewhere []string `json:"isNotPresentSomewhere"`
 }
 
 func loadDictionary(filename string) map[string]bool {
@@ -38,6 +38,7 @@ func loadDictionary(filename string) map[string]bool {
 
 func backtrack(idx int, s []rune, isPresentSomewhere, isNotPresentSomewhere map[rune]bool, validWords map[string]bool, results *[]string) {
 	if idx == 5 {
+		// Ensure all letters in isPresentSomewhere exist in the word
 		for c := range isPresentSomewhere {
 			if !strings.ContainsRune(string(s), c) {
 				return
@@ -49,21 +50,32 @@ func backtrack(idx int, s []rune, isPresentSomewhere, isNotPresentSomewhere map[
 		return
 	}
 
-	if s[idx] != 'X' {
+	if s[idx] != '_' {
 		backtrack(idx+1, s, isPresentSomewhere, isNotPresentSomewhere, validWords, results)
 		return
 	}
 
 	for _, c := range ALPHABET {
-		if !isNotPresentSomewhere[rune(c)] {
+		if !isNotPresentSomewhere[rune(c)] { // Only consider letters that are not absent
 			s[idx] = rune(c)
 			backtrack(idx+1, s, isPresentSomewhere, isNotPresentSomewhere, validWords, results)
-			s[idx] = 'X'
+			s[idx] = '_'
 		}
 	}
 }
 
 func solveHandler(w http.ResponseWriter, r *http.Request) {
+	// Enable CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	// Handle OPTIONS request (CORS preflight)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -80,15 +92,23 @@ func solveHandler(w http.ResponseWriter, r *http.Request) {
 	isPresentSomewhere := make(map[rune]bool)
 	isNotPresentSomewhere := make(map[rune]bool)
 
+	// Fix: Ensure empty characters don't cause issues
 	for _, c := range requestData.IsPresentSomewhere {
-		isPresentSomewhere[rune(c[0])] = true
+		if len(c) > 0 {
+			isPresentSomewhere[rune(c[0])] = true
+		}
 	}
 	for _, c := range requestData.IsNotPresentSomewhere {
-		isNotPresentSomewhere[rune(c[0])] = true
+		if len(c) > 0 {
+			isNotPresentSomewhere[rune(c[0])] = true
+		}
 	}
 
 	var results []string
 	backtrack(0, s, isPresentSomewhere, isNotPresentSomewhere, validWords, &results)
+
+	// Debugging: Print filtered words
+	fmt.Println("Final word list:", results)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(results)
