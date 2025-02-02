@@ -63,10 +63,10 @@ void solve()
     unordered_set<string> validWords = loadDictionary("wordList.txt"); // Load dictionary from file
     string s = "XXXXX";
     unordered_map<char,int>fixed_place{
-        
+        {'R',1},
     };
-    unordered_set<char>isPresentSomewhere{'H','I','K'};
-    unordered_set<char>isNotPresentSomewhere{};
+    unordered_set<char>isPresentSomewhere{'D','U'};
+    unordered_set<char>isNotPresentSomewhere{'A','M','C','I','E'};
     for (auto &[ch, pos] : fixed_place) {
         s[pos] = ch;
     }
