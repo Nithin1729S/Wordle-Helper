@@ -15,7 +15,11 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [alertMessage, setAlertMessage] = useState("");
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
+  useEffect(() => {
+    if (!showResults) {
+      inputRefs.current[0]?.focus();
+    }
+  }, [showResults]);
   const handleSubmit = useCallback(async () => {
     const formattedPresent = presentLetters
       .toUpperCase()
