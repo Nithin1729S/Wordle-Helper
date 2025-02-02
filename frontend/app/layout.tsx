@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Wordle Helper',
   description: 'Find the perfect word',
+  icons: {
+    icon: '/favicon.ico', // Add the favicon here
+  },
 };
 
 export default function RootLayout({
