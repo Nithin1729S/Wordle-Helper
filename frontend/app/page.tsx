@@ -1,6 +1,5 @@
-"use client";
-
-import { useState } from "react";
+"use client"
+import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,17 +12,21 @@ export default function Home() {
   const [results, setResults] = useState<string[]>([]);
   const [showResults, setShowResults] = useState(false);
 
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   const handleKnownLetterChange = (index: number, value: string) => {
     const newLetters = [...knownLetters];
     newLetters[index] = value.toUpperCase();
     setKnownLetters(newLetters);
+
+    // Move focus to next input if the value is filled
+    if (value.length === 1 && index < 4) {
+      inputRefs.current[index + 1]?.focus();
+    }
   };
 
   const handleSubmit = async () => {
-    const formattedS = knownLetters
-      .map((l) => (l === "" ? "_" : l))
-      .join("")
-      .toUpperCase();
+    // Check for overlap between present and absent letters
     const formattedPresent = presentLetters
       .toUpperCase()
       .split("")
@@ -32,7 +35,21 @@ export default function Home() {
       .toUpperCase()
       .split("")
       .filter((c) => c !== " ");
-
+  
+    const overlap = formattedPresent.some((letter) =>
+      formattedAbsent.includes(letter)
+    );
+  
+    if (overlap) {
+      alert("Letters in 'Present Letters' and 'Absent Letters' are overlapping.");
+      return;
+    }
+  
+    const formattedS = knownLetters
+      .map((l) => (l === "" ? "_" : l))
+      .join("")
+      .toUpperCase();
+  
     try {
       const response = await fetch("http://localhost:8080/solve", {
         method: "POST",
@@ -45,11 +62,11 @@ export default function Home() {
           isNotPresentSomewhere: formattedAbsent, // e.g. ["A", "M", "C", "I", "E"]
         }),
       });
-
+  
       if (!response.ok) {
         throw new Error("Failed to fetch words");
       }
-
+  
       const data = await response.json();
       setResults(data); // Store received words
       setShowResults(true);
@@ -113,6 +130,7 @@ export default function Home() {
                   }
                   className="w-12 h-12 text-center text-lg uppercase"
                   maxLength={1}
+                  ref={(el) => (inputRefs.current[index] = el)}
                 />
               ))}
             </div>
