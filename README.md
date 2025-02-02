@@ -12,6 +12,7 @@ A Wordle Helper built with **Go** and **Next.js/TypeScript** that predicts possi
 
 ## Demo
 
+[Demo.webm](https://github.com/user-attachments/assets/6969281c-0681-47a2-ab1f-fc491c583cca)
 
 
 ## Features
