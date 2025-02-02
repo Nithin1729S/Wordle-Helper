@@ -35,7 +35,7 @@ A Wordle Helper built with **Go** and **Next.js/TypeScript** that predicts possi
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/yourusername/wordle-helper.git
+    git clone https://github.com/Nithin1729S/Wordle-Helper.git
     cd wordle-helper
     ```
 
