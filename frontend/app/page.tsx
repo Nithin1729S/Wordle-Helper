@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Search } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"; // Import the alert components
 
 export default function Home() {
   const [knownLetters, setKnownLetters] = useState<string[]>(Array(5).fill(""));
@@ -12,7 +13,7 @@ export default function Home() {
   const [results, setResults] = useState<string[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-
+  const [alertMessage, setAlertMessage] = useState(""); // State to control the alert message visibility
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleSubmit = useCallback(async () => {
@@ -30,7 +31,7 @@ export default function Home() {
     );
   
     if (overlap) {
-      alert("Letters in 'Present Letters' and 'Absent Letters' are overlapping.");
+      setAlertMessage("Letters in 'Present Letters' and 'Absent Letters' are overlapping.");
       return;
     }
   
@@ -168,11 +169,18 @@ export default function Home() {
         </div>
 
         <div className="space-y-6">
+          {alertMessage && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{alertMessage}</AlertDescription>
+            </Alert>
+          )}
+
           <div>
             <label className="text-sm font-medium mb-2 block">
               Known Letters (in position)
             </label>
-            <div className="flex gap-2 pl-16">
+            <div className="flex gap-2">
               {knownLetters.map((letter, index) => (
                 <Input
                   key={index}
