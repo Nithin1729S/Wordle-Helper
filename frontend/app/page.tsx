@@ -1,5 +1,5 @@
 "use client"
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,22 +11,11 @@ export default function Home() {
   const [absentLetters, setAbsentLetters] = useState("");
   const [results, setResults] = useState<string[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handleKnownLetterChange = (index: number, value: string) => {
-    const newLetters = [...knownLetters];
-    newLetters[index] = value.toUpperCase();
-    setKnownLetters(newLetters);
-
-    // Move focus to next input if the value is filled
-    if (value.length === 1 && index < 4) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleSubmit = async () => {
-    // Check for overlap between present and absent letters
+  const handleSubmit = useCallback(async () => {
     const formattedPresent = presentLetters
       .toUpperCase()
       .split("")
@@ -57,9 +46,9 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          s: formattedS, // e.g. "_U__D"
-          isPresentSomewhere: formattedPresent, // e.g. ["D", "U"]
-          isNotPresentSomewhere: formattedAbsent, // e.g. ["A", "M", "C", "I", "E"]
+          s: formattedS,
+          isPresentSomewhere: formattedPresent,
+          isNotPresentSomewhere: formattedAbsent,
         }),
       });
   
@@ -68,10 +57,70 @@ export default function Home() {
       }
   
       const data = await response.json();
-      setResults(data); // Store received words
+      setResults(data);
       setShowResults(true);
     } catch (error) {
       console.error("Error fetching words:", error);
+    }
+  }, [knownLetters, presentLetters, absentLetters]);
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Only handle events when not showing results and not focusing on other inputs
+      if (showResults || (document.activeElement?.tagName === 'INPUT' && 
+          !inputRefs.current.includes(document.activeElement as HTMLInputElement))) {
+        return;
+      }
+
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        // Allow backspace on the last letter too
+        if (currentIndex >= 0) {
+          const newLetters = [...knownLetters];
+          // Clear current letter if it exists, otherwise move back and clear
+          if (currentIndex < 5 && newLetters[currentIndex] !== '') {
+            newLetters[currentIndex] = '';
+          } else if (currentIndex > 0) {
+            newLetters[currentIndex - 1] = '';
+            setCurrentIndex(currentIndex - 1);
+          }
+          setKnownLetters(newLetters);
+        }
+      } else if (/^[a-zA-Z]$/.test(e.key) && currentIndex < 5) {
+        e.preventDefault(); // Prevent default to avoid double input
+        const newLetters = [...knownLetters];
+        newLetters[currentIndex] = e.key.toUpperCase();
+        setKnownLetters(newLetters);
+        if (currentIndex < 4) {
+          setCurrentIndex(currentIndex + 1);
+        }
+      } else if(e.key === 'Enter') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [handleSubmit, knownLetters, currentIndex, showResults]);
+
+  useEffect(() => {
+    if (currentIndex >= 0 && currentIndex < 5) {
+      inputRefs.current[currentIndex]?.focus();
+    }
+  }, [currentIndex]);
+
+  const handleKnownLetterChange = (index: number, value: string) => {
+    const newLetters = [...knownLetters];
+    newLetters[index] = value.toUpperCase();
+    setKnownLetters(newLetters);
+    
+    // Only move to next input if there's a value
+    if (value && index < 4) {
+      setCurrentIndex(index + 1);
     }
   };
 
@@ -81,7 +130,10 @@ export default function Home() {
         <div className="max-w-2xl mx-auto">
           <Button
             variant="ghost"
-            onClick={() => setShowResults(false)}
+            onClick={() => {
+              setShowResults(false);
+              setCurrentIndex(0);
+            }}
             className="mb-6"
           >
             ← Back to Search
@@ -120,7 +172,7 @@ export default function Home() {
             <label className="text-sm font-medium mb-2 block">
               Known Letters (in position)
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 pl-16">
               {knownLetters.map((letter, index) => (
                 <Input
                   key={index}
