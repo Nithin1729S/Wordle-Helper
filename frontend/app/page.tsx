@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Search } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"; // Import the alert components
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function Home() {
   const [knownLetters, setKnownLetters] = useState<string[]>(Array(5).fill(""));
@@ -13,7 +13,7 @@ export default function Home() {
   const [results, setResults] = useState<string[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [alertMessage, setAlertMessage] = useState(""); // State to control the alert message visibility
+  const [alertMessage, setAlertMessage] = useState("");
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleSubmit = useCallback(async () => {
@@ -25,21 +25,21 @@ export default function Home() {
       .toUpperCase()
       .split("")
       .filter((c) => c !== " ");
-  
+
     const overlap = formattedPresent.some((letter) =>
       formattedAbsent.includes(letter)
     );
-  
+
     if (overlap) {
       setAlertMessage("Letters in 'Present Letters' and 'Absent Letters' are overlapping.");
       return;
     }
-  
+
     const formattedS = knownLetters
       .map((l) => (l === "" ? "_" : l))
       .join("")
       .toUpperCase();
-  
+
     try {
       const response = await fetch("http://localhost:8080/solve", {
         method: "POST",
@@ -52,11 +52,11 @@ export default function Home() {
           isNotPresentSomewhere: formattedAbsent,
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error("Failed to fetch words");
       }
-  
+
       const data = await response.json();
       setResults(data);
       setShowResults(true);
@@ -67,35 +67,37 @@ export default function Home() {
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // Only handle events when not showing results and not focusing on other inputs
-      if (showResults || (document.activeElement?.tagName === 'INPUT' && 
+      if (showResults || (document.activeElement?.tagName !== 'INPUT' || 
           !inputRefs.current.includes(document.activeElement as HTMLInputElement))) {
         return;
       }
 
+      const activeElementIndex = inputRefs.current.findIndex(
+        (ref) => ref === document.activeElement
+      );
+
       if (e.key === 'Backspace') {
         e.preventDefault();
-        // Allow backspace on the last letter too
-        if (currentIndex >= 0) {
-          const newLetters = [...knownLetters];
-          // Clear current letter if it exists, otherwise move back and clear
-          if (currentIndex < 5 && newLetters[currentIndex] !== '') {
-            newLetters[currentIndex] = '';
-          } else if (currentIndex > 0) {
-            newLetters[currentIndex - 1] = '';
-            setCurrentIndex(currentIndex - 1);
-          }
-          setKnownLetters(newLetters);
-        }
-      } else if (/^[a-zA-Z]$/.test(e.key) && currentIndex < 5) {
-        e.preventDefault(); // Prevent default to avoid double input
         const newLetters = [...knownLetters];
-        newLetters[currentIndex] = e.key.toUpperCase();
-        setKnownLetters(newLetters);
-        if (currentIndex < 4) {
-          setCurrentIndex(currentIndex + 1);
+        if (newLetters[activeElementIndex] !== '') {
+          newLetters[activeElementIndex] = '';
+          setKnownLetters(newLetters);
+        } else if (activeElementIndex > 0) {
+          newLetters[activeElementIndex - 1] = '';
+          setKnownLetters(newLetters);
+          setCurrentIndex(activeElementIndex - 1);
+          inputRefs.current[activeElementIndex - 1]?.focus();
         }
-      } else if(e.key === 'Enter') {
+      } else if (/^[a-zA-Z]$/.test(e.key)) {
+        e.preventDefault();
+        const newLetters = [...knownLetters];
+        newLetters[activeElementIndex] = e.key.toUpperCase();
+        setKnownLetters(newLetters);
+        if (activeElementIndex < 4) {
+          setCurrentIndex(activeElementIndex + 1);
+          inputRefs.current[activeElementIndex + 1]?.focus();
+        }
+      } else if (e.key === 'Enter') {
         e.preventDefault();
         handleSubmit();
       }
@@ -106,23 +108,24 @@ export default function Home() {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [handleSubmit, knownLetters, currentIndex, showResults]);
-
-  useEffect(() => {
-    if (currentIndex >= 0 && currentIndex < 5) {
-      inputRefs.current[currentIndex]?.focus();
-    }
-  }, [currentIndex]);
+  }, [handleSubmit, knownLetters, showResults]);
 
   const handleKnownLetterChange = (index: number, value: string) => {
+    if (value.length > 1) return; // Prevent multiple characters
+    
     const newLetters = [...knownLetters];
     newLetters[index] = value.toUpperCase();
     setKnownLetters(newLetters);
-    
-    // Only move to next input if there's a value
+
+    // Move focus to the next input if a letter is typed
     if (value && index < 4) {
       setCurrentIndex(index + 1);
+      inputRefs.current[index + 1]?.focus();
     }
+  };
+
+  const handleInputFocus = (index: number) => {
+    setCurrentIndex(index);
   };
 
   if (showResults) {
@@ -186,8 +189,9 @@ export default function Home() {
                   key={index}
                   value={letter}
                   onChange={(e) =>
-                    handleKnownLetterChange(index, e.target.value.slice(-1))
+                    handleKnownLetterChange(index, e.target.value)
                   }
+                  onFocus={() => handleInputFocus(index)}
                   className="w-12 h-12 text-center text-lg uppercase"
                   maxLength={1}
                   ref={(el) => (inputRefs.current[index] = el)}
